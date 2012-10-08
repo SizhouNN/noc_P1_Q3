@@ -55,10 +55,10 @@ void PE_IO::fire_PI()
 		p.token, p.dest_x, p.dest_y);
 
 	out_queue_.push_back(p);
+
 	//increase counter for P1_Q1
 	firedTimes[0]++;
 }
-
 void PE_IO::fire_PO()
 {
 	assert((packet_in_.src_x != -1)
@@ -77,12 +77,13 @@ void PE_inc::execute()
 		&& (packet_in_.src_y != -1))
 		fire();
 }
-
+//modified fire() for P1_Q3
 void PE_inc::fire()
 {
 	assert((packet_in_.src_x != -1)
 		&& (packet_in_.src_y != -1));
 
+	/*
 	int PO_x = 0, PO_y = 0;
 	packet p(x_, y_, PO_x, PO_y, packet_in_.token+1);
 
@@ -92,6 +93,28 @@ void PE_inc::fire()
 		p.token, p.dest_x, p.dest_y);
 
 	out_queue_.push_back(p);
+	*/
+
+	int destX;
+	if (packet_in_.src_x == 0)
+	{
+		destX = 2;
+	}
+	else if(packet_in_.src_x == 1)
+	{
+		destX = 0;
+	}
+	else
+		printf("ERROR!!\n");
+	
+	packet p(x_, y_, destX, 0, packet_in_.token+1);
+	printf("inc(%d,%d): receive %d from (%d,%d), send %d to (%d,%d)\n",
+		x_, y_,
+		packet_in_.token, packet_in_.src_x,	packet_in_.src_y,
+		p.token, p.dest_x, p.dest_y);
+	
+	out_queue_.push_back(p);
+
 	//increase counter for P1_Q1
 	firedTimes[0]++;
 }

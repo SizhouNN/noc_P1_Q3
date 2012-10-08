@@ -6,7 +6,7 @@
 
 struct utilizationData
 {
-	enum {N =2};
+	enum {N =3};
 	//for router id links
 	int rtr2rtrW[N-1];
 	int rtr2rtrE[N-1];
@@ -22,6 +22,8 @@ struct utilizationData
 	float P_PEinc;
 	int PEIO[2];
 	float P_PEIO[2];
+	int PEinc2;
+	float P_PEinc2;
 
 	utilizationData()
 	{
@@ -52,7 +54,7 @@ struct utilizationData
 SC_MODULE(top)
 {
 public:
-	enum {N = 2};
+	enum {N = 3};
 
 	router *routers[N];
 	PE_base *pes[N];
@@ -63,42 +65,57 @@ public:
 	sc_signal<packet> terminal_loop_east, terminal_loop_west;
 	sc_signal<bool> clock;
 
+
 	SC_CTOR(top)
 	{
 		create_pes();
 		create_network();
+
+		sc_trace_file *tf = sc_create_vcd_trace_file("ThreePE");
+		sc_trace(tf, router_to_router_east[1], "TRACE_router_to_router_east[1]");
 	}
 
 	//top level public functions for project 1 questions
 	void getUtilizationData(float totalClock, utilizationData * returnStruct)
 	{
 		//get values
-		returnStruct->pe2rtr[0] = routers[0]->linkNotEmpty[router::PE];
-		returnStruct->pe2rtr[1] = routers[1]->linkNotEmpty[router::PE];
-
-		returnStruct->rtr2pe[0] = pes[0]->linkNotEmpty;
-		returnStruct->rtr2pe[1] = pes[1]->linkNotEmpty;
-
+		//4 process
 		returnStruct->PEIO[0] = pes[0]->firedTimes[0];
 		returnStruct->PEIO[1] = pes[0]->firedTimes[1];
 		returnStruct->PEinc = pes[1]->firedTimes[0];
+		returnStruct->PEinc2 = pes[2]->firedTimes[0];
+		//8 links
+		returnStruct->pe2rtr[0] = routers[0]->linkNotEmpty[router::PE];
+		returnStruct->pe2rtr[1] = routers[1]->linkNotEmpty[router::PE];
+		returnStruct->pe2rtr[2] = routers[2]->linkNotEmpty[router::PE];
+
+		returnStruct->rtr2pe[0] = pes[0]->linkNotEmpty;
+		returnStruct->rtr2pe[1] = pes[1]->linkNotEmpty;
+		returnStruct->rtr2pe[2] = pes[2]->linkNotEmpty;
 
 		returnStruct->rtr2rtrE[0] = routers[1]->linkNotEmpty[router::WEST];
+		returnStruct->rtr2rtrE[1] = routers[2]->linkNotEmpty[router::WEST];
 		returnStruct->rtr2rtrW[0] = routers[0]->linkNotEmpty[router::EAST];
+		returnStruct->rtr2rtrW[1] = routers[1]->linkNotEmpty[router::EAST];
 
 		//calculate rates
-		returnStruct->P_pe2rtr[0] = (float)returnStruct->pe2rtr[0]/(float)totalClock;
-		returnStruct->P_pe2rtr[1] = (float)returnStruct->pe2rtr[1]/(float)totalClock;
-
-		returnStruct->P_rtr2pe[0] = (float)returnStruct->rtr2pe[0]/(float)totalClock;
-		returnStruct->P_rtr2pe[1] = (float)returnStruct->rtr2pe[1]/(float)totalClock;
-
 		returnStruct->P_PEIO[0] = (float)returnStruct->PEIO[0]/(float)totalClock;
 		returnStruct->P_PEIO[1] = (float)returnStruct->PEIO[1]/(float)totalClock;
 		returnStruct->P_PEinc = (float)returnStruct->PEinc/(float)totalClock;
+		returnStruct->P_PEinc2 = (float)returnStruct->PEinc2/(float)totalClock;
 
-		returnStruct->P_rtr2rtrE[0] = routers[1]->linkNotEmpty[router::WEST]/(float)totalClock;
-		returnStruct->P_rtr2rtrW[0] = routers[0]->linkNotEmpty[router::EAST]/(float)totalClock;
+		returnStruct->P_pe2rtr[0] = (float)returnStruct->pe2rtr[0]/(float)totalClock;
+		returnStruct->P_pe2rtr[1] = (float)returnStruct->pe2rtr[1]/(float)totalClock;
+		returnStruct->P_pe2rtr[2] = (float)returnStruct->pe2rtr[2]/(float)totalClock;
+
+		returnStruct->P_rtr2pe[0] = (float)returnStruct->rtr2pe[0]/(float)totalClock;
+		returnStruct->P_rtr2pe[1] = (float)returnStruct->rtr2pe[1]/(float)totalClock;
+		returnStruct->P_rtr2pe[2] = (float)returnStruct->rtr2pe[2]/(float)totalClock;
+
+		returnStruct->P_rtr2rtrE[0] = (float)returnStruct->rtr2rtrE[0]/(float)totalClock;
+		returnStruct->P_rtr2rtrE[1] = (float)returnStruct->rtr2rtrE[1]/(float)totalClock;
+		returnStruct->P_rtr2rtrW[0] = (float)returnStruct->rtr2rtrW[0]/(float)totalClock;
+		returnStruct->P_rtr2rtrW[1] = (float)returnStruct->rtr2rtrW[1]/(float)totalClock;
 
 		return;
 	}
@@ -114,9 +131,16 @@ protected:
 		pes[1]->clock(clock);
 		pes[1]->set_xy(1, 0);
 
+		//P1_Q3
+		pes[2] = new PE_inc("P2");
+		pes[2]->clock(clock);
+		pes[2]->set_xy(2, 0);
+
 		//init pe counters for P1_Q1
 		pes[0]->init();
 		pes[1]->init();
+		//P1_Q3
+		pes[2]->init();
 
 	}
 
@@ -196,11 +220,29 @@ int sc_main(int argc , char *argv[])
 
 	//Data for Project 1
 	utilizationData * P1_Q1 = new utilizationData();
+	int runtime; 
+
+	//Banner
+	printf("*********************************************\n");
+	printf("*             ECE 587  Fall 2012            *\n");
+	printf("*                  Project 1                *\n");
+	printf("*   Part 2 - Three PEs                      *\n");
+	printf("*                                           *\n");
+	printf("*    Sizhou Wang A20249772                  *\n");
+	printf("*    Thank You !                            *\n");
+	printf("*********************************************\n");
+	
+	printf("\nPlease enter the number of cycles to run >>>");
+	scanf("%d", &runtime);
+
+	//sc_trace file? too many file outputs
+	//sc_trace_file *tf = sc_create_vcd_trace_file("ThreePE");
+
 
 	printf("cycle  0 ================================\n");
 	sc_start(0, SC_NS);
 
-	for(int i = 1; i < 20; i++){
+	for(int i = 1; i < runtime; i++){
 		
 		printf("cycle %2d ================================\n", i);
 
@@ -210,23 +252,35 @@ int sc_main(int argc , char *argv[])
 		sc_start(10, SC_NS);
 	}
 
+
 	//Methods for Project 1
 	//Question 1
-	top_module.getUtilizationData(20, P1_Q1);
-	printf("Utilization Rate for P1: %%%3.2f\n", P1_Q1->P_PEinc*100);
-	printf("Utilization Rate for PI: %%%3.2f\n", P1_Q1->P_PEIO[0]*100);
-	printf("Utilization Rate for PO: %%%3.2f\n", P1_Q1->P_PEIO[1]*100);
+	printf("\n            > > Utilization Rate : %d cycles < <\n", runtime);
+	top_module.getUtilizationData(runtime, P1_Q1);
+	printf("                        P1: %%%3.2f\n", P1_Q1->P_PEinc*100);
+	printf("                        P2: %%%3.2f\n", P1_Q1->P_PEinc2*100);
+	printf("                        PI: %%%3.2f\n", P1_Q1->P_PEIO[0]*100);
+	printf("                        PO: %%%3.2f\n", P1_Q1->P_PEIO[1]*100);
 	printf("For abstract link \'a\':\n");
-	printf("Utilization Rate for C-Link pe_to_router[0]: %%%3.2f\n", P1_Q1->P_pe2rtr[0]*100);
-	printf("Utilization Rate for C-Link router_to_router_east[0]: %%%3.2f\n", P1_Q1->P_rtr2rtrE[0]*100);
-	printf("Utilization Rate for C-Link router_to_pe[1]: %%%3.2f\n", P1_Q1->P_rtr2pe[1]*100);
+	printf("           pe_to_router[0]: %%%3.2f\n", P1_Q1->P_pe2rtr[0]*100);
+	printf("  router_to_router_east[0]: %%%3.2f\n", P1_Q1->P_rtr2rtrE[0]*100);
+	printf("           router_to_pe[1]: %%%3.2f\n", P1_Q1->P_rtr2pe[1]*100);
 	printf("For abstract link \'b\':\n");
-	printf("Utilization Rate for C-Link pe_to_router[1]: %%%3.2f\n", P1_Q1->P_pe2rtr[1]*100);
-	printf("Utilization Rate for C-Link router_to_router_wast[0]: %%%3.2f\n", P1_Q1->P_rtr2rtrW[0]*100);
-	printf("Utilization Rate for C-Link router_to_pe[0]: %%%3.2f\n", P1_Q1->P_rtr2pe[0]*100);
-
+	printf("           pe_to_router[1]: %%%3.2f\n", P1_Q1->P_pe2rtr[1]*100);
+	printf("  router_to_router_east[1]: %%%3.2f\n", P1_Q1->P_rtr2rtrE[1]*100);
+	printf("           router_to_pe[2]: %%%3.2f\n", P1_Q1->P_rtr2pe[2]*100);
+	printf("For abstract link \'c\':\n");
+	printf("           pe_to_router[2]: %%%3.2f\n", P1_Q1->P_pe2rtr[2]*100);
+	printf("  router_to_router_wast[1]: %%%3.2f\n", P1_Q1->P_rtr2rtrW[1]*100);
+	printf("  router_to_router_wast[0]: %%%3.2f\n", P1_Q1->P_rtr2rtrW[0]*100);
+	printf("           router_to_pe[0]: %%%3.2f\n", P1_Q1->P_rtr2pe[0]*100);
 	//Question 2
-
+	printf("\n            > > Queue Size : %d cycles < <\n", runtime);	
+	printf("Queue size is monitored every cycle though out all %d cycles.\n", runtime);		
+	printf("It is determined by the max value during the life time of each unit.Files containing these data can be found under the same folder.\n");			
+	printf("WARNNING: Existing file will be overwritten!\n\n");	
+	printf("Router : router_x_y_OutQueue_SOUTH.txt\n");		
+	printf("    PE : PE_x_y_OutQueue.txt\n\n");
 
 
 

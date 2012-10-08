@@ -1,5 +1,6 @@
 Debug/
 noc_P1_Q3/
+ipch/
 *.opensdf
 *.sdf
 *.sln
