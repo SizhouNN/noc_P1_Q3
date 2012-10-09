@@ -71,8 +71,6 @@ public:
 		create_pes();
 		create_network();
 
-		sc_trace_file *tf = sc_create_vcd_trace_file("ThreePE");
-		sc_trace(tf, router_to_router_east[1], "TRACE_router_to_router_east[1]");
 	}
 
 	//top level public functions for project 1 questions
@@ -221,6 +219,9 @@ int sc_main(int argc , char *argv[])
 	//Data for Project 1
 	utilizationData * P1_Q1 = new utilizationData();
 	int runtime; 
+	sc_trace_file *tf = sc_create_vcd_trace_file("ThreePE");
+	sc_trace(tf, top_module.router_to_router_east[1], "router_to_router_east[1]");
+	sc_trace(tf, top_module.clock, "clock");
 
 	//Banner
 	printf("*********************************************\n");
@@ -252,7 +253,7 @@ int sc_main(int argc , char *argv[])
 		sc_start(10, SC_NS);
 	}
 
-
+	sc_close_vcd_trace_file(tf);
 	//Methods for Project 1
 	//Question 1
 	printf("\n            > > Utilization Rate : %d cycles < <\n", runtime);
